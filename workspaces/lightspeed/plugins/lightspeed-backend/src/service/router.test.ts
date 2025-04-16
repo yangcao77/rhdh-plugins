@@ -339,20 +339,21 @@ describe('lightspeed router tests', () => {
       expect(chatCompletionResponse.statusCode).toEqual(403);
     });
 
-    it('returns 400 if provider is missing', async () => {
-      const backendServer = await startBackendServer();
-      const response = await request(backendServer)
-        .post('/api/lightspeed/v1/query')
-        .send({
-          model: mockModel,
-          conversation_id: mockConversationId,
-          query: 'hello',
-        });
-      expect(response.statusCode).toEqual(400);
-      expect(response.body.error).toBe(
-        'provider is required and must be a non-empty string',
-      );
-    });
+    // Todo: removed this validation for now, as we do not have provider information from the client.
+    // it('returns 400 if provider is missing', async () => {
+    //   const backendServer = await startBackendServer();
+    //   const response = await request(backendServer)
+    //     .post('/api/lightspeed/v1/query')
+    //     .send({
+    //       model: mockModel,
+    //       conversation_id: mockConversationId,
+    //       query: 'hello',
+    //     });
+    //   expect(response.statusCode).toEqual(400);
+    //   expect(response.body.error).toBe(
+    //     'provider is required and must be a non-empty string',
+    //   );
+    // });
 
     it('returns 400 if model is missing', async () => {
       const backendServer = await startBackendServer();

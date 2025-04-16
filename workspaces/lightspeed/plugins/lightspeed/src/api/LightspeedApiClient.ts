@@ -62,7 +62,6 @@ export class LightspeedApiClient implements LightspeedAPI {
             ? undefined
             : conversation_id,
         model: selectedModel,
-        provider: 'ollama',
         query: prompt,
       }),
     });

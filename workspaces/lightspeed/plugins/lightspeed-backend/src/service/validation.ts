@@ -31,11 +31,12 @@ export const validateCompletionsRequest = (
       .json({ error: 'model is required and must be a non-empty string' });
   }
 
-  if (typeof reqData.provider !== 'string' || reqData.provider.trim() === '') {
-    return res
-      .status(400)
-      .json({ error: 'provider is required and must be a non-empty string' });
-  }
+  // Todo: // removing this validation for now, as we do not have provider information from the client.
+  // if (typeof reqData.provider !== 'string' || reqData.provider.trim() === '') {
+  //   return res
+  //     .status(400)
+  //     .json({ error: 'provider is required and must be a non-empty string' });
+  // }
 
   if (typeof reqData.query !== 'string' || reqData.query.trim() === '') {
     return res

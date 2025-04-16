@@ -177,6 +177,10 @@ export async function createRouter(
         if (!system_prompt) {
           request.body.system_prompt = QUERY_SYSTEM_INSTRUCTION;
         }
+        request.body.provider = config
+          .getConfigArray('lightspeed.servers')[0]
+          .getString('id'); // currently only single llm server is supported
+
         request.body.media_type = 'application/json'; // set media_type to receive start and end event
         const requestBody = JSON.stringify(request.body);
         const fetchResponse = await fetch(

@@ -14,3 +14,10 @@
  * limitations under the License.
  */
 export const TEMP_CONVERSATION_ID = 'temp-conversation-id';
+import { orchestratorFormWidgetsPlugin } from './plugin';
+
+describe('orchestrator-form-widgets', () => {
+  it('should export plugin', () => {
+    expect(orchestratorFormWidgetsPlugin).toBeDefined();
+  });
+});

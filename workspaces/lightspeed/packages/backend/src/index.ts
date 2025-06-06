@@ -27,6 +27,7 @@ backend.add(import('@backstage/plugin-techdocs-backend/alpha'));
 backend.add(import('@backstage/plugin-auth-backend'));
 // See https://backstage.io/docs/backend-system/building-backends/migrating#the-auth-plugin
 backend.add(import('@backstage/plugin-auth-backend-module-guest-provider'));
+backend.add(import('@backstage/plugin-auth-backend-module-github-provider'));
 // See https://backstage.io/docs/auth/guest/provider
 
 // catalog plugin
@@ -39,11 +40,13 @@ backend.add(
 backend.add(import('@backstage/plugin-catalog-backend-module-logs'));
 
 // permission plugin
-backend.add(import('@backstage/plugin-permission-backend'));
-// See https://backstage.io/docs/permissions/getting-started for how to create your own permission policy
-backend.add(
-  import('@backstage/plugin-permission-backend-module-allow-all-policy'),
-);
+// backend.add(import('@backstage/plugin-permission-backend'));
+// // See https://backstage.io/docs/permissions/getting-started for how to create your own permission policy
+// backend.add(import('@backstage/plugin-permission-backend/alpha'));
+// backend.add(
+//   import('@backstage/plugin-permission-backend-module-allow-all-policy'),
+// );
+backend.add(import('@backstage-community/plugin-rbac-backend'));
 
 // search plugin
 backend.add(import('@backstage/plugin-search-backend/alpha'));
@@ -61,5 +64,5 @@ backend.add(import('@backstage/plugin-kubernetes-backend/alpha'));
 backend.add(
   import('@red-hat-developer-hub/backstage-plugin-lightspeed-backend'),
 );
-
+// backend.add(import('./extensions/permissionsPolicyExtension'));
 backend.start();

@@ -1,0 +1,5 @@
+p, role:default/guests, lightspeed.conversations.read, read, allow
+p, role:default/guests, lightspeed.conversations.create, create, allow
+p, role:default/guests, lightspeed.conversations.delete, delete, allow
+
+g, user:default/yangcao77, role:default/guests

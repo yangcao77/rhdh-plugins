@@ -18,10 +18,10 @@ import { fetchApiRef, useApi } from '@backstage/core-plugin-api';
 import { flatten, get } from 'lodash';
 import {
   OrchestratorFormContextProps,
-  useWrapperFormPropsContext,
+  // useWrapperFormPropsContext,
 } from '@red-hat-developer-hub/backstage-plugin-orchestrator-form-api';
 import { JsonObject } from '@backstage/types';
-import { ErrorSchema } from '@rjsf/utils';
+import { ERRORS_KEY, ErrorSchema } from '@rjsf/utils';
 import { useTemplateUnitEvaluator } from './useTemplateUnitEvaluator';
 import { evaluateTemplate } from './evaluateTemplate';
 import { getRequestInit } from './useRequestInit';
@@ -67,11 +67,10 @@ const walkThrough: (
 
 export const useGetExtraErrors = () => {
   const fetchApi = useApi(fetchApiRef);
-  const { formData, uiSchema } = useWrapperFormPropsContext();
   const templateUnitEvaluator = useTemplateUnitEvaluator();
-
   return async (
-    currentFormData: JsonObject,
+    formData: JsonObject,
+    uiSchema: OrchestratorFormContextProps['uiSchema'],
   ): Promise<ErrorSchema<JsonObject>> => {
     // Asynchronous validation on wizard step transition or submit
     const errors: ErrorSchema<JsonObject> = {};
@@ -81,8 +80,8 @@ export const useGetExtraErrors = () => {
 
       if (
         validateUrl &&
-        ['ActiveTextInput'].includes(
-          uiSchemaProperty?.['ui:widget']?.toString() || '',
+        ['ActiveTextInput', 'ActiveDropdown', 'ActiveMultiSelect'].includes(
+          uiSchemaProperty?.['ui:widget']?.toString() ?? '',
         )
       ) {
         const value = get(formData, path);
@@ -117,7 +116,7 @@ export const useGetExtraErrors = () => {
                 ) as string[];
 
                 safeSet(errors, path, {
-                  __errors: array.map(e => e?.toString()),
+                  [ERRORS_KEY]: array.map(e => e?.toString()),
                 });
               }
             });
@@ -128,7 +127,7 @@ export const useGetExtraErrors = () => {
 
     const promises: Promise<void>[] = walkThrough(
       uiSchema,
-      currentFormData,
+      formData,
       callback,
       '',
     );

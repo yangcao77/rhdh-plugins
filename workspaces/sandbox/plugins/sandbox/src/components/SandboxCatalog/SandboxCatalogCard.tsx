@@ -36,6 +36,8 @@ import { AnsibleStatus } from '../../utils/aap-utils';
 import { useApi } from '@backstage/core-plugin-api';
 import { aapApiRef, kubeApiRef } from '../../api';
 import { Product } from './productData';
+import { signupDataToStatus } from '../../utils/register-utils';
+import { productsURLMapping } from '../../hooks/useProductURLs';
 
 type SandboxCatalogCardProps = {
   id: Product;
@@ -107,21 +109,19 @@ export const SandboxCatalogCard: React.FC<SandboxCatalogCardProps> = ({
   const theme = useTheme();
   const kubeApi = useApi(kubeApiRef);
   const aapApi = useApi(aapApiRef);
+  let { userData, userFound, userReady, verificationRequired } =
+    useSandboxContext();
   const {
-    userData,
     ansibleData,
     ansibleStatus,
     signupUser,
-    userFound,
-    userReady,
-    verificationRequired,
     refetchUserData,
     refetchAAP,
   } = useSandboxContext();
   const [ansibleCredsModalOpen, setAnsibleCredsModalOpen] =
     React.useState(false);
   const [verifyPhoneModalOpen, setVerifyPhoneModalOpen] = useState(false);
-
+  const [refetchingUserData, setRefetchingUserData] = useState(false);
   const [deleteAnsibleModalOpen, setDeleteAnsibleModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -158,10 +158,43 @@ export const SandboxCatalogCard: React.FC<SandboxCatalogCardProps> = ({
 
   const handleTryButtonClick = async (pdt: Product) => {
     // User is not yet signed up
+    let urlToOpen = link;
     if (!userFound) {
       signupUser();
-      refetchUserData();
+
+      const maxAttempts = 5;
+      const retryInterval = 1000; // 1 second
+
+      // Poll until user is found or max attempts reached
+      for (let i = 0; i < maxAttempts; i++) {
+        setRefetchingUserData(true);
+        await new Promise(resolve => setTimeout(resolve, retryInterval));
+
+        try {
+          // Fetch the latest user data and check if user is found
+          userData = await refetchUserData();
+          if (userData) {
+            userFound = true;
+            const userStatus = signupDataToStatus(userData);
+            verificationRequired = userStatus === 'verify';
+            userReady = userStatus === 'ready';
+            // if user is ready or verification is required we can stop fetching the data
+            if (userReady || verificationRequired) {
+              const productURLs = productsURLMapping(userData);
+              // find the link to open if any
+              urlToOpen = productURLs.find(pu => pu.id === id)?.url || '';
+              break;
+            }
+          }
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('Error fetching user data:', error);
+        } finally {
+          setRefetchingUserData(false);
+        }
+      }
     }
+
     // User has signed up but require verification
     if (userFound && verificationRequired) {
       setVerifyPhoneModalOpen(true);
@@ -171,6 +204,8 @@ export const SandboxCatalogCard: React.FC<SandboxCatalogCardProps> = ({
       await handleAAPInstance();
       refetchAAP();
       setAnsibleCredsModalOpen(true);
+    } else if (userFound && userReady && urlToOpen) {
+      window.open(urlToOpen, '_blank');
     }
     showGreenCorner();
   };
@@ -213,6 +248,7 @@ export const SandboxCatalogCard: React.FC<SandboxCatalogCardProps> = ({
   return (
     <>
       <Card
+        data-testid="catalog-card"
         elevation={0}
         key={id}
         sx={{
@@ -283,6 +319,7 @@ export const SandboxCatalogCard: React.FC<SandboxCatalogCardProps> = ({
             id={id}
             handleTryButtonClick={handleTryButtonClick}
             theme={theme}
+            refetchingUserData={refetchingUserData}
           />
           <SandboxCatalogCardDeleteButton
             id={id}

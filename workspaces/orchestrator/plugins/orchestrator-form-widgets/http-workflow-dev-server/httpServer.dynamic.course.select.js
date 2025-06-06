@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -76,22 +76,25 @@ app.get('/coursedetailsschema', (req, res) => {
         /* replace nothing */
       }),
     );
+    return;
   }
 
   const fields = {
     room: {
       type: 'string',
       title:
-        'Room (backed by ActiveTextInput, fetches default value, validates externally the data but does not have autocomplete)',
+        'Room (example of ActiveTextInput supplied by SchemaUpdater, validation)',
       'ui:widget': 'ActiveTextInput',
       'ui:props': {
+        devonlycomment:
+          'Fetches default value, validates externally the data but does not have autocomplete.',
         'fetch:url':
-          'http://localhost:7007/api/proxy/mytesthttpserver/rooms?coursename=$${{current.courseName}}',
+          '$${{backend.baseUrl}}/api/proxy/mytesthttpserver/rooms?coursename=$${{current.courseName}}',
         'fetch:response:value': 'room.mydefault',
         'fetch:retrigger': ['current.courseName'],
         'fetch:method': 'GET',
         'validate:url':
-          'http://localhost:7007/api/proxy/mytesthttpserver/validateroom',
+          '$${{backend.baseUrl}}/api/proxy/mytesthttpserver/validateroom',
         'validate:method': 'POST',
         'validate:body': {
           field: 'courseDetails.room',
@@ -99,6 +102,10 @@ app.get('/coursedetailsschema', (req, res) => {
           courseName: '$${{current.courseName}}',
         },
       },
+    },
+    nickname: {
+      type: 'string',
+      title: 'Your nickname',
     },
   };
 
@@ -163,6 +170,72 @@ app.post('/validateroom', (req, res) => {
   res.send('Valid');
 });
 
+app.get('/preferred-teacher', (req, res) => {
+  logRequest(req);
+
+  const studentName = req.query?.studentname;
+  const courseName = req.query?.coursename;
+
+  const labels = [
+    'Tim',
+    'Jack ',
+    'John',
+    `Special teacher for "${courseName}"`,
+  ];
+
+  const values = ['123_tim', '456_jack', '789_john', 'he_is_special'];
+
+  if (studentName && studentName !== '___undefined___') {
+    labels.push(`Someone who knows ${studentName}`);
+    values.push('acquaintant');
+  }
+
+  const result = {
+    // Use whatever structure here, just make sure the selectors in the data input schema picks correct values and labels.
+    // For example, it means fetch:response:label and fetch:response:value in case of the ActiveDropdown.
+    foo: {},
+    bar: { labels },
+    values,
+  };
+
+  // HTTP 200
+  res.send(JSON.stringify(result));
+});
+
+app.post('/validateteacher', (req, res) => {
+  logRequest(req);
+
+  const field = req.body?.field;
+  const value = req.body?.value;
+  const courseName = req.body?.courseName;
+  // const studentName = req.body?.studentName;
+
+  if (field === 'preferredTeacher') {
+    if (value === '789_john') {
+      // any 4xx or 5xx is fine here
+      res.status(422);
+      res.send({
+        [field]: ['Unfortunately John became already unavailable.'],
+      });
+
+      return;
+    }
+
+    if (value === '456_jack' && courseName === 'one course') {
+      res.status(422);
+      res.send({
+        [field]: [`Jack newly prefers other topics than "${courseName}".`],
+      });
+
+      return;
+    }
+  }
+
+  // The HTTP 200 is important here. The response content "Valid" is not required, just a courtesy.
+  res.status(200);
+  res.send('Valid');
+});
+
 app.get('/coursedetailsschema', (req, res) => {
   logRequest(req);
 
@@ -184,6 +257,80 @@ app.get('/coursedetailsschema', (req, res) => {
   res.send(JSON.stringify(response));
 });
 
+app.get('/suggested-courses', (req, res) => {
+  logRequest(req);
+
+  const courseName = req.query?.coursename;
+
+  let suggestions = [];
+  if (courseName === 'one course') {
+    suggestions = ['Related Course A', 'Another Related Course'];
+  } else if (courseName === 'another course') {
+    suggestions = ['One More Course', 'And Another One'];
+  } else if (courseName === 'complexCourse') {
+    suggestions = ['Advanced Topics', 'Master Class'];
+  } else {
+    suggestions = ['Consider these too!', 'Explore other options'];
+  }
+
+  const response = {
+    suggestions: suggestions.join(', '),
+  };
+
+  // HTTP 200
+  res.send(JSON.stringify(response));
+});
+
+app.get('/drinks', (req, res) => {
+  logRequest(req);
+
+  // HTTP 200
+  res.send(
+    JSON.stringify({
+      allDrinks: [
+        'water',
+        'sparkling water',
+        'water with lemon',
+        'water on rocks',
+        'prohibited drink',
+      ],
+    }),
+  );
+});
+
+app.post('/validatedrinks', (req, res) => {
+  logRequest(req);
+
+  const field = req.body?.field;
+  const valueRaw = req.body?.value;
+
+  if (field === 'complimentaryDrinks') {
+    const value = JSON.parse(valueRaw);
+    if (!Array.isArray(value)) {
+      // any 4xx or 5xx is fine here
+      res.status(422);
+      res.send({
+        [field]: ['Unexpected validation error - list of drinks is expected'],
+      });
+
+      return;
+    }
+
+    if (value.includes('prohibited drink')) {
+      // any 4xx or 5xx is fine here
+      res.status(422);
+      res.send({
+        [field]: ['You can not have the prohibited drink, try something else'],
+      });
+
+      return;
+    }
+  }
+
+  // The HTTP 200 is important here. The response content "Valid" is not required, just a courtesy.
+  res.status(200);
+  res.send('Valid');
+});
 app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.info(

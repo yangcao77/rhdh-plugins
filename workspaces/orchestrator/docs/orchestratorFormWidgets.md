@@ -118,7 +118,11 @@ Referenced as: `"ui:widget": "ActiveTextInput"`.
 
 A smart component based on the [@mui/material/TextField](https://mui.com/material-ui/react-text-field/) keeping look&feel with other RJSF-default fields.
 
-### Data fetching
+![example](./widgets/ActiveTextInput_01.png)
+
+![example](./widgets/ActiveTextInput_02.png)
+
+### ActiveTextInput Data fetching
 
 When instantiated, it loads (prefetch) the **default** value using a single HTTP call based on the `fetch:*` from the `ui:props`.
 
@@ -130,7 +134,7 @@ If the `fetch:retrigger` is omitted, the fetch is issued just once to preload th
 
 Because a text input’s default value only applies when the field is initially empty, any changes to the returned value in subsequent requests are ignored if the user has already entered data into that field.
 
-### Data validation
+### ActiveTextInput Data validation
 
 In addition to the AJV validation handled by the RJSF form, an external service can be utilized through the `validate:*` properties via HTTP requests.
 
@@ -195,6 +199,153 @@ The widget supports following `ui:props`:
 
 [Check more details](#content-of-uiprops)
 
+## ActiveDropdown widget
+
+Referenced as: `"ui:widget": "ActiveDropdown"`.
+
+A smart component based on the [@mui/material/Select](https://mui.com/material-ui/react-select/) keeping look&feel with other RJSF-default fields.
+
+![example](./widgets/ActiveDropdown_01.png)
+
+![example](./widgets/ActiveDropdown_02.png)
+
+### ActiveDropdown Data Fetching and validation
+
+Retrieving a list of items (each consisting of a value and a label) and validating the field operates similarly to the `ActiveTextInput` component.
+
+The main distinction lies in the selectors used: `fetch:response:label` and `fetch:response:value`. Both selectors should resolve to arrays of strings, where the index in each array corresponds to a single item.
+Therefore, both arrays must be of equal length.
+
+The final value of the field is determined by the values provided by the `fetch:response:value` selector.
+
+### ActiveDropdown widget ui:props
+
+The widget supports following `ui:props`:
+
+- fetch:url
+- fetch:headers
+- fetch:method
+- fetch:body
+- fetch:retrigger
+- fetch:response:value
+- fetch:response:label
+- validate:url
+- validate:method
+- validate:headers
+- validate:body
+- validate:retrigger
+
+[Check more details](#content-of-uiprops)
+
+## ActiveMultiSelect widget
+
+Referenced as: `"ui:widget": "ActiveMultiSelect"`.
+
+A smart component based on the [@mui/material/TextField](https://mui.com/material-ui/react-text-field/) keeping look&feel with other RJSF-default fields with autocompletion.
+
+The selected items are represented as chips, the value of the field is an array of strings.
+
+Users can only enter values that are provided in the list returned by `fetch:url` and `fetch:response:autocomplete`.
+
+![example](./widgets/ActiveMultiSelect_01.png)
+
+![example](./widgets/ActiveMultiSelect_02.png)
+
+![example](./widgets/ActiveMultiSelect_03.png)
+
+![example](./widgets/ActiveMultiSelect_04.png)
+
+### ActiveMultiSelect Data Fetching and validation
+
+Retrieving a list of autocomplete items (array of strings for autocompletion) and validating the field operates similarly to the `ActiveTextInput` component.
+
+Validation is similar to the `ActiveTextInput` as well, just the value being passed is an array of strings.
+
+### ActiveMultiSelect widget ui:props
+
+The widget supports following `ui:props`:
+
+- fetch:url
+- fetch:headers
+- fetch:method
+- fetch:body
+- fetch:retrigger
+- fetch:response:autocomplete
+- validate:url
+- validate:method
+- validate:headers
+- validate:body
+- validate:retrigger
+
+[Check more details](#content-of-uiprops)
+
+## ActiveText widget
+
+Referenced as: `"ui:widget": "ActiveText"`.
+
+A smart component based on the [@mui/material/Typography](https://mui.com/material-ui/react-typography/) that displays text with dynamically changing content using `${{...}}` templates (see [Templating and Backstage API Exposed Parts](#templating-and-backstage-api-exposed-parts)).
+
+The content of the text can be derived from various sources, including:
+
+- Values of other form fields (`current.[fieldName]`).
+- Data fetched from external HTTP endpoints (`fetch:response:[KEY]`).
+- Information from Backstage APIs (`identityApi.[key]`, `rjsfConfig.[key]`, `backend.baseUrl`).
+
+The widget refetches the data when the values of the `fetch:retrigger` dependencies change. For details on data fetching properties, see [Content of `ui:props`](#content-of-uiprops).
+
+### ActiveText Data Fetching
+
+If the `fetch:url` property is provided in the `ui:props`, the widget will make an HTTP request to the specified endpoint. The `fetch:method`, `fetch:headers`, and `fetch:body` properties can be used to configure the request (see [Content of `ui:props`](#content-of-uiprops)).
+
+The response from the fetch operation is expected to be a JSON object. You can then use the `fetch:response:[YOUR_KEY]` properties to select specific values from this response and use them in the `ui:text` template.
+
+The data will be refetched if the value of any of the keys listed in the `fetch:retrigger` array changes.
+
+### Dynamic Text Templating
+
+The `ui:text` property in the `ui:props` defines the text to be displayed. This text can contain template literals in the format `${{...}}`. These templates are evaluated at runtime and replaced with dynamic values from various sources (see [Templating and Backstage API Exposed Parts](#templating-and-backstage-api-exposed-parts)).
+
+For example, if your API response is:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "name": "Example Data",
+    "value": 123
+  }
+}
+```
+
+You can configure your ActiveText widget like this:
+
+```json
+"myDynamicText": {
+    "type": "string",
+    "title": "Dynamic Data Display",
+    "ui:widget": "ActiveText",
+    "ui:props": {
+      "fetch:url": "/api/mydata",
+      "fetch:response:name": "data.name",
+      "fetch:response:value": "data.value",
+      "ui:text": "The name is: $${{fetch:response:name}}, and the value is: $${{fetch:response:value}}"
+    }
+  },
+```
+
+### ActiveText widget ui:props
+
+The widget supports the following `ui:props` (for detailed information on each, see [Content of `ui:props`](#content-of-uiprops)):
+
+- `ui:variant`: Corresponds to the `variant` property of the `@mui/material/Typography` component, allowing you to control the visual style of the text (e.g., `h1`, `body1`, `caption`).
+- `ui:text`: The text to display, which can include `${{...}}` templates for dynamic values.
+- `fetch:response:[YOUR_KEY]`: Selectors to extract data from the fetch response. The `[YOUR_KEY]` can be any name you choose.
+- `fetch:url`
+- `fetch:method`
+- `fetch:headers`
+- `fetch:body`
+- `fetch:retrigger`
+
 ## Content of `ui:props`
 
 A list of particular widgets supported by each widget can be found in its description above.
@@ -206,7 +357,7 @@ Various selectors (like `fetch:response:*`) are processed by the [jsonata](https
 
 |    Property of ui:props     |                                                                                                                                                                                                                            Description                                                                                                                                                                                                                             |                        Example value                        |
 | :-------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------: |
-|          fetch:url          |                                                                                              The URL to fetch the widget’s data from, can be accompanied by other properties listed below. Can contain ${{...}} templates, i.e. to pass GET request parameters. Check the Backend Proxy chapter for description of behavior for both the absolute and relative URLs.                                                                                               |      `/my.app.config.proxy/v1/$${current.customerId}`       |
+|          fetch:url          |                                                                                                        The URL to fetch the widget’s data from, can be accompanied by other properties listed below. Can contain `${{...}}` templates, i.e. to pass GET request parameters. Check the Backend Proxy chapter for details about accessing external services.                                                                                                         |      `/my.app.config.proxy/v1/$${current.customerId}`       |
 |        fetch:headers        |                                                                                                                             HTTP headers of the request. Valid for both the POST and GET. By default, following header is automatically added unless explicitly overridden in the fetch:headers: `"Content-Type": "application/json"`                                                                                                                              |   `{ "Authorization": "Bearer $${{identityApi.token}}"}`    |
 |        fetch:method         |                                                                                                                                                                                                              HTTP method to use. The default is GET.                                                                                                                                                                                                               | GET, POST (So far no identified use-case for PUT or DELETE) |
 |         fetch:body          |                                                                                                                                                                                                  The body of an HTTP POST request. Not used with the GET method.                                                                                                                                                                                                   |          `{“foo”: “bar $${{identityApi.token}}”}`           |
@@ -220,8 +371,8 @@ Various selectors (like `fetch:response:*`) are processed by the [jsonata](https
 |     validate:retrigger      | An array similar to fetch:retrigger. Force revalidation of the field if a dependency is changed. In the most simple case when just the value of the particular field is listed (sort of \[“current.myField”\], the validation is triggered “on input”, i.e. when the user types a character in ActiveInputBox. The network calls are throttled. No matter if validate:retrigger is used, the validation happens at least on submit or transition to the next page. |                                                             |
 |        validate:body        |                                                                                                                                                                                                                       Similar to fetch:body                                                                                                                                                                                                                        |                                                             |
 |      validate:headers       |                                                                                                                                                                                                                    Similar to validate:headers                                                                                                                                                                                                                     |                                                             |
-|         ui:variant          |                                                                                                                                                                                              So far specific for StaticText widget only. Check the description there.                                                                                                                                                                                              |                                                             |
-|           ui:text           |                                                                                                                                                                                              So far specific for StaticText widget only. Check the description there.                                                                                                                                                                                              |                                                             |
+|         ui:variant          |                                                                                                                                                                                   So far specific for StaticText widget only. See [ActiveText props](#activetext-widget-uiprops)                                                                                                                                                                                   |                                                             |
+|           ui:text           |                                                                                                                                                                    So far specific for StaticText widget only. Check the description there. See [ActiveText props](#activetext-widget-uiprops)                                                                                                                                                                     |                                                             |
 
 ### Authentication
 
@@ -235,11 +386,38 @@ As all widgets and the decorated RJSF form run on the frontend in the browser, m
 
 To mitigate these issues in a production environment, the deployment can be customized after the Orchestrator deployment to set up a [Backstage proxy](https://backstage.io/docs/plugins/proxying/) for each service.
 
-Relative URLs in the data input JSON schema will be automatically prefixed with the Backstage backend URL (including protocol and domain).
-Absolute URLs (e.g. including protocol) are used as stated.
+To generically prefix URLs with the Backstage backend, you can use the `$${{backend.baseUrl}}` template.
+
+Absolute URLs (those that include the protocol) will be used as provided.
+
+Relative URLs are resolved against the Backstage frontend URL, which often limits their usefulness in most production environments.
 
 Currently, there is no identified need for advanced modifications to the HTTP calls made by the widgets.
 However, if such requirements arise in the future, a new endpoint can be added to the existing Orchestrator backend to act as a proxy, enabling additional logic for requests and responses. So far, the existing Backstage proxy mechanism seems to be sufficient.
+
+Example:
+
+For proxy config in the `app-config.yaml`:
+
+```
+proxy:
+  reviveConsumedRequestBodies: true
+  endpoints:
+    '/mytesthttpserver':
+      target: 'http://localhost:12345'
+      allowedMethods: ['GET', 'POST']
+      allowedHeaders: ['test-header']
+```
+
+The URLs can look like:
+
+```
+      "ui:props": {
+        "fetch:url": "$${{backend.baseUrl}}/api/proxy/mytesthttpserver/myendpoint?foo=$${{current.foo}}",
+      }
+```
+
+`
 
 ## Templating and Backstage API Exposed Parts
 
@@ -262,18 +440,19 @@ The widgets manage waiting for asynchronous promises and chains of functions to 
 When exposing additional keys in the future, we will consider not only the [frontend-visibility](https://backstage.io/docs/conf/defining/#visibility) but security as well, since a malicious workflow can retrieve configuration of plugins or Backstage, eventually with their secrets.
 That’s the reason for listing the exposed keys explicitly.
 
-|                                 Key Family                                  |              Key              |                         Value of at runtime\<br\>(skipping promises for simplicity)                         |
-| :-------------------------------------------------------------------------: | :---------------------------: | :---------------------------------------------------------------------------------------------------------: |
-|                                   current                                   |  \[whatever property name\]   |                                  Value of other field/property of the form                                  |
-|                                 identityApi                                 |             token             |                                     IdentityApi.getCredentials().token                                      |
-|                                                                             |         userEntityRef         |                              IdentityApi.getBackstageIdentity().userEntityRef                               |
-|                                                                             |         profileEmail          |                                     IdentityApi.getProfileInfo().email                                      |
-|                                                                             |          displayName          |                                  IdentityApi.getProfileInfo().displayName                                   |
-|                microsoftAuthApi gitlabAuthApi googleAuthApi                 |          openIdToken          | OpenIdConnectApi.getIdToken(undefined /\* defaults \*/) Mind this is not available for Github and Atlassian |
-| atlassianAuthApi githubAuthApi microsoftAuthApi gitlabAuthApi googleAuthApi |             token             |                                OAuthApi.getAccessToken(undefined, undefined)                                |
-| atlassianAuthApi githubAuthApi microsoftAuthApi gitlabAuthApi googleAuthApi |         profileEmail          |                                 ProfileInfoApi.getProfile(undefined).email                                  |
-| atlassianAuthApi githubAuthApi microsoftAuthApi gitlabAuthApi googleAuthApi |          profileName          |                              ProfileInfoApi.getProfile(undefined).displayName                               |
-|                                 rjsfConfig                                  | orchestrator.\[whatever key\] |               configApi.getOptionalString(\`${orchestrator.rjsf-widgets.\[whatever key\]}\`)                |
+|                                 Key Family                                  |              Key              |                                                                                                                  Value of at runtime\<br\>(skipping promises for simplicity)                                                                                                                  |
+| :-------------------------------------------------------------------------: | :---------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+|                                   current                                   |  \[whatever property name\]   | Value of other field/property of the form. The properties build hierarchy separated by `.` (dots) matching the structure of fields/objects defined by the data input schema. Arrays or branches of a complex object structure can be passed as well, data are encoded into JSON in that case. |
+|                                 identityApi                                 |             token             |                                                                                                                              IdentityApi.getCredentials().token                                                                                                                               |
+|                                                                             |         userEntityRef         |                                                                                                                       IdentityApi.getBackstageIdentity().userEntityRef                                                                                                                        |
+|                                                                             |         profileEmail          |                                                                                                                              IdentityApi.getProfileInfo().email                                                                                                                               |
+|                                                                             |          displayName          |                                                                                                                           IdentityApi.getProfileInfo().displayName                                                                                                                            |
+|                microsoftAuthApi gitlabAuthApi googleAuthApi                 |          openIdToken          |                                                                                          OpenIdConnectApi.getIdToken(undefined /\* defaults \*/) Mind this is not available for Github and Atlassian                                                                                          |
+| atlassianAuthApi githubAuthApi microsoftAuthApi gitlabAuthApi googleAuthApi |             token             |                                                                                                                         OAuthApi.getAccessToken(undefined, undefined)                                                                                                                         |
+| atlassianAuthApi githubAuthApi microsoftAuthApi gitlabAuthApi googleAuthApi |         profileEmail          |                                                                                                                          ProfileInfoApi.getProfile(undefined).email                                                                                                                           |
+| atlassianAuthApi githubAuthApi microsoftAuthApi gitlabAuthApi googleAuthApi |          profileName          |                                                                                                                       ProfileInfoApi.getProfile(undefined).displayName                                                                                                                        |
+|                                 rjsfConfig                                  | orchestrator.\[whatever key\] |                                                                                                        configApi.getOptionalString(\`${orchestrator.rjsf-widgets.\[whatever key\]}\`)                                                                                                         |
+|                                   backend                                   |            baseUrl            |                                                                                          configApi.getString('backend.baseUrl') - useful for building URLs with proxy without hardcoding the backend                                                                                          |
 
 ## Retrieving Data from Backstage Catalog
 
@@ -291,4 +470,4 @@ Alternatively, you can fork the plugin that provides the library and use it as a
 In this scenario, you are responsible for managing updates and fixes, as backward compatibility is not guaranteed for forked versions.
 
 Currently, the Workflow execution RJSF form supports extending only one library at a time, meaning only a single implementation of `orchestratorFormApiRef` is active.
-You can fully replace the default implementation with your custom version by undeploying the original.
+You can fully replace the default implementation with your custom version by undeploying the original, [more info here](./extensibleForm.md).

@@ -14,30 +14,38 @@
  * limitations under the License.
  */
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import {
   FormDecoratorProps,
   OrchestratorFormApi,
-  useWrapperFormPropsContext,
+  OrchestratorFormContextProps,
 } from '@red-hat-developer-hub/backstage-plugin-orchestrator-form-api';
 import { FormValidation } from '@rjsf/utils';
 import { JsonObject } from '@backstage/types';
 
-import { SchemaUpdater, ActiveTextInput } from './widgets';
+import {
+  SchemaUpdater,
+  ActiveTextInput,
+  ActiveText,
+  ActiveDropdown,
+  ActiveMultiSelect,
+} from './widgets';
 import { useGetExtraErrors } from './utils';
 
 const customValidate = (
   _formData: JsonObject | undefined,
   errors: FormValidation<JsonObject>,
 ): FormValidation<JsonObject> => {
-  // TODO: Trigger field validation
-  // Called synchronously
+  // Trigger synchronous field validation
   return errors;
 };
 
 const widgets = {
   SchemaUpdater,
   ActiveTextInput,
+  ActiveText,
+  ActiveDropdown,
+  ActiveMultiSelect,
 };
 
 export class FormWidgetsApi implements OrchestratorFormApi {
@@ -46,26 +54,13 @@ export class FormWidgetsApi implements OrchestratorFormApi {
     console.log('Using FormWidgetsApi by RHDH orchestrator-form-widgets.');
 
     return (FormComponent: React.ComponentType<FormDecoratorProps>) => {
-      return () => {
-        const { formData, setFormData } = useWrapperFormPropsContext();
+      return (props: OrchestratorFormContextProps) => {
         const getExtraErrors = useGetExtraErrors();
-
-        const onChange = useCallback(
-          (data: JsonObject | undefined) => {
-            if (data) {
-              setFormData(data);
-            }
-          },
-          [setFormData],
-        );
 
         return (
           <FormComponent
             widgets={widgets}
-            onChange={e => {
-              onChange(e.formData);
-            }}
-            formContext={formData}
+            formContext={props}
             customValidate={customValidate}
             getExtraErrors={getExtraErrors}
           />

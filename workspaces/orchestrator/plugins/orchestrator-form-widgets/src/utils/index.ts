@@ -19,3 +19,6 @@ export * from './useRetriggerEvaluate';
 export * from './useTemplateUnitEvaluator';
 export * from './safeSet';
 export * from './useGetExtraErrors';
+export * from './useFetch';
+export * from './useFetchAndEvaluate';
+export * from './applySelector';

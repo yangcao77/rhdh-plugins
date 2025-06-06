@@ -66,8 +66,6 @@ describe('PhoneVerificationModal', () => {
       ansibleStatus: AnsibleStatus.UNKNOWN,
       verificationRequired: false,
       userData: undefined,
-      fetchError: null,
-      signupError: null,
       signupUser: jest.fn(),
       refetchAAP: jest.fn(),
       ansibleData: undefined,
@@ -82,6 +80,17 @@ describe('PhoneVerificationModal', () => {
       </TestApiProvider>,
     );
   };
+
+  test('should open the modal', () => {
+    renderComponent();
+
+    expect(screen.getByText("Let's verify you")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Enter your phone number and we'll send you a text message with a verification code.",
+      ),
+    ).toBeInTheDocument();
+  });
 
   test('should handle modal close', () => {
     renderComponent();

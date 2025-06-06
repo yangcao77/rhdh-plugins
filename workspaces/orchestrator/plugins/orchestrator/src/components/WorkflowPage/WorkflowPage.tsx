@@ -20,7 +20,7 @@ import { useAsync } from 'react-use';
 import { TabbedLayout } from '@backstage/core-components';
 import { useApi, useRouteRefParams } from '@backstage/core-plugin-api';
 
-import { Grid } from '@material-ui/core';
+import Grid from '@mui/material/Grid';
 
 import { orchestratorApiRef } from '../../api';
 import { workflowRouteRef, workflowRunsRoutePath } from '../../routes';
@@ -51,7 +51,7 @@ export const WorkflowPage = () => {
       <TabbedLayout>
         <TabbedLayout.Route path="/" title="Workflow details">
           <Grid container spacing={2}>
-            <RunButton />
+            <RunButton isAvailable={workflowOverviewDTO?.data.isAvailable} />
             <WorkflowDetailsTabContent
               loadingWorkflowOverview={loadingWorkflowOverview}
               workflowOverviewDTO={workflowOverviewDTO?.data}
@@ -61,7 +61,7 @@ export const WorkflowPage = () => {
         </TabbedLayout.Route>
         <TabbedLayout.Route path={workflowRunsRoutePath} title="Workflow runs">
           <Grid container spacing={2}>
-            <RunButton />
+            <RunButton isAvailable={workflowOverviewDTO?.data.isAvailable} />
             <WorkflowRunsTabContent />
           </Grid>
         </TabbedLayout.Route>

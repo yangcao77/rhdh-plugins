@@ -34,6 +34,11 @@ export enum AssetType {
 }
 
 // @public (undocumented)
+export type ConfigurationResponse = {
+    configYaml: string;
+};
+
+// @public (undocumented)
 export const decodeGetEntitiesRequest: (searchParams: URLSearchParams) => GetEntitiesRequest;
 
 // @public (undocumented)
@@ -74,41 +79,35 @@ export const encodeGetEntitiesRequest: (request: GetEntitiesRequest) => URLSearc
 // @public (undocumented)
 export const encodeGetEntityFacetsRequest: (request: GetEntityFacetsRequest) => URLSearchParams;
 
-// @public
-export const extensionPackageCreatePermission: ResourcePermission<"extension-package">;
-
-// @public
-export const extensionPackageDeletePermission: ResourcePermission<"extension-package">;
-
-// @public
-export type ExtensionPackagePermission = ResourcePermission<typeof RESOURCE_TYPE_EXTENSION_PACKAGE>;
-
-// @public
-export const extensionPackageReadPermission: ResourcePermission<"extension-package">;
-
-// @public
-export const extensionPackageUpdatePermission: ResourcePermission<"extension-package">;
-
-// @public (undocumented)
-export const extensionPermissions: ResourcePermission<"extension-plugin">[];
-
-// @public
-export const extensionPluginCreatePermission: ResourcePermission<"extension-plugin">;
-
-// @public
-export const extensionPluginDeletePermission: ResourcePermission<"extension-plugin">;
-
-// @public
-export type ExtensionPluginPermission = ResourcePermission<typeof RESOURCE_TYPE_EXTENSION_PLUGIN>;
-
-// @public
-export const extensionPluginReadPermission: ResourcePermission<"extension-plugin">;
-
-// @public
-export const extensionPluginUpdatePermission: ResourcePermission<"extension-plugin">;
-
 // @public (undocumented)
 export const EXTENSIONS_API_VERSION = "extensions.backstage.io/v1alpha1";
+
+// @public
+export const extensionsPackageDeletePermission: ResourcePermission<"extensions-package">;
+
+// @public
+export type ExtensionsPackagePermission = ResourcePermission<typeof RESOURCE_TYPE_EXTENSIONS_PACKAGE>;
+
+// @public
+export const extensionsPackageReadPermission: ResourcePermission<"extensions-package">;
+
+// @public
+export const extensionsPackageWritePermission: ResourcePermission<"extensions-package">;
+
+// @public (undocumented)
+export const extensionsPermissions: ResourcePermission<"extensions-plugin">[];
+
+// @public
+export const extensionsPluginDeletePermission: ResourcePermission<"extensions-plugin">;
+
+// @public
+export type ExtensionsPluginPermission = ResourcePermission<typeof RESOURCE_TYPE_EXTENSIONS_PLUGIN>;
+
+// @public
+export const extensionsPluginReadPermission: ResourcePermission<"extensions-plugin">;
+
+// @public
+export const extensionsPluginWritePermission: ResourcePermission<"extensions-plugin">;
 
 // @public (undocumented)
 export type FetchApi = {
@@ -165,6 +164,8 @@ export interface MarketplaceApi {
     // (undocumented)
     getPackageByName(namespace: string, name: string): Promise<MarketplacePackage>;
     // (undocumented)
+    getPackageConfigByName?(namespace: string, name: string): Promise<ConfigurationResponse>;
+    // (undocumented)
     getPackages(request: GetEntitiesRequest): Promise<GetEntitiesResponse<MarketplacePackage>>;
     // (undocumented)
     getPackagesFacets(request: GetEntityFacetsRequest): Promise<GetEntityFacetsResponse>;
@@ -172,18 +173,25 @@ export interface MarketplaceApi {
     getPluginByName(namespace: string, name: string): Promise<MarketplacePlugin>;
     // (undocumented)
     getPluginConfigAuthorization?(namespace: string, name: string): Promise<{
-        authorizedActions: string[];
+        read: 'ALLOW' | 'DENY';
+        write: 'ALLOW' | 'DENY';
     }>;
     // (undocumented)
-    getPluginConfigByName?(namespace: string, name: string): Promise<{
-        configYaml: string;
-    }>;
+    getPluginConfigByName?(namespace: string, name: string): Promise<ConfigurationResponse>;
     // (undocumented)
     getPluginFacets(request: GetEntityFacetsRequest): Promise<GetEntityFacetsResponse>;
     // (undocumented)
     getPluginPackages(namespace: string, name: string): Promise<MarketplacePackage[]>;
     // (undocumented)
     getPlugins(request: GetEntitiesRequest): Promise<GetEntitiesResponse<MarketplacePlugin>>;
+    // (undocumented)
+    installPackage?(namespace: string, name: string, configYaml: string): Promise<{
+        status: string;
+    }>;
+    // (undocumented)
+    installPlugin?(namespace: string, name: string, configYaml: string): Promise<{
+        status: string;
+    }>;
 }
 
 // @public (undocumented)
@@ -206,6 +214,8 @@ export class MarketplaceBackendClient implements MarketplaceApi {
     // (undocumented)
     getPackageByName(namespace: string, name: string): Promise<MarketplacePackage>;
     // (undocumented)
+    getPackageConfigByName(namespace: string, name: string): Promise<ConfigurationResponse>;
+    // (undocumented)
     getPackages(request: GetEntitiesRequest): Promise<GetEntitiesResponse<MarketplacePackage>>;
     // (undocumented)
     getPackagesFacets(request: GetEntityFacetsRequest): Promise<GetEntityFacetsResponse>;
@@ -213,18 +223,25 @@ export class MarketplaceBackendClient implements MarketplaceApi {
     getPluginByName(namespace: string, name: string): Promise<MarketplacePlugin>;
     // (undocumented)
     getPluginConfigAuthorization(namespace: string, name: string): Promise<{
-        authorizedActions: string[];
+        read: 'ALLOW' | 'DENY';
+        write: 'ALLOW' | 'DENY';
     }>;
     // (undocumented)
-    getPluginConfigByName(namespace: string, name: string): Promise<{
-        configYaml: string;
-    }>;
+    getPluginConfigByName(namespace: string, name: string): Promise<ConfigurationResponse>;
     // (undocumented)
     getPluginFacets(request: GetEntityFacetsRequest): Promise<GetEntityFacetsResponse>;
     // (undocumented)
     getPluginPackages(namespace: string, name: string): Promise<MarketplacePackage[]>;
     // (undocumented)
     getPlugins(request: GetEntitiesRequest): Promise<GetEntitiesResponse<MarketplacePlugin>>;
+    // (undocumented)
+    installPackage(namespace: string, name: string, configYaml: string): Promise<{
+        status: string;
+    }>;
+    // (undocumented)
+    installPlugin(namespace: string, name: string, configYaml: string): Promise<{
+        status: any;
+    }>;
 }
 
 // @public (undocumented)
@@ -399,9 +416,9 @@ export interface MarketplacePluginSpec extends JsonObject {
 }
 
 // @public (undocumented)
-export const RESOURCE_TYPE_EXTENSION_PACKAGE = "extension-package";
+export const RESOURCE_TYPE_EXTENSIONS_PACKAGE = "extensions-package";
 
 // @public (undocumented)
-export const RESOURCE_TYPE_EXTENSION_PLUGIN = "extension-plugin";
+export const RESOURCE_TYPE_EXTENSIONS_PLUGIN = "extensions-plugin";
 
 ```

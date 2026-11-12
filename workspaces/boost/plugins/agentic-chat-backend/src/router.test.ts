@@ -1,0 +1,335 @@
+/*
+ * Copyright Red Hat, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import express from 'express';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import request from 'supertest';
+import { ConfigReader } from '@backstage/config';
+import {
+  catalogServiceRef,
+  type CatalogService,
+} from '@backstage/plugin-catalog-node';
+import { createServiceFactory } from '@backstage/backend-plugin-api';
+import { AuthorizeResult } from '@backstage/plugin-permission-common';
+import { NotAllowedError } from '@backstage/errors';
+import {
+  mockCredentials,
+  mockServices,
+  startTestBackend,
+} from '@backstage/backend-test-utils';
+import agenticChatPlugin from './index';
+import { createRouter } from './router';
+import legalAgent from '../examples/legal-agent.json';
+import legalUpstreamRequest from '../examples/legal-upstream-request.json';
+
+// External Backstage services are test doubles; runtime forwarding uses real HTTP.
+
+const agent = {
+  apiVersion: 'backstage.io/v1alpha1',
+  kind: 'AiResource',
+  metadata: { name: 'support' },
+  spec: {
+    type: 'agent',
+    lifecycle: 'production',
+    owner: 'platform',
+    model: 'granite',
+    executionMode: 'in-process',
+    tools: ['search'],
+  },
+};
+let server: Server;
+let port: number;
+let calls: Array<{
+  path: string;
+  owner: string | null;
+  method: string;
+  body: unknown;
+  authorization?: string;
+}>;
+let upstreamFails = false;
+
+beforeAll(async () => {
+  const upstream = express();
+  upstream.use(express.json());
+  upstream.use((req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    const owner = url.searchParams.get('user_id');
+    calls.push({
+      path: url.pathname,
+      owner,
+      method: req.method,
+      body: req.body,
+      authorization: req.headers.authorization,
+    });
+    if (upstreamFails) {
+      res.status(500).json({ error: 'PRIVATE_UPSTREAM_CREDENTIAL' });
+      return;
+    }
+    if (url.pathname === '/v1/agent/run') {
+      res.status(202).json({ workflow_id: 'wf-1', status: 'running' });
+      return;
+    }
+    if (req.method === 'DELETE') {
+      res.status(204).end();
+      return;
+    }
+    res.json({
+      conversations:
+        owner === 'user:default/alice'
+          ? [{ conversation_id: 'alice-session' }]
+          : [],
+    });
+  });
+  server = await new Promise<Server>(resolve => {
+    const listener = upstream.listen(0, '127.0.0.1', () => resolve(listener));
+  });
+  port = (server.address() as AddressInfo).port;
+});
+afterAll(async () => {
+  await new Promise<void>((resolve, reject) =>
+    server.close(error => (error ? reject(error) : resolve())),
+  );
+});
+beforeEach(() => {
+  calls = [];
+  upstreamFails = false;
+});
+
+async function app(
+  options: {
+    allowed?: boolean;
+    anonymous?: boolean;
+    catalogDenied?: boolean;
+    missingAgent?: boolean;
+  } = {},
+) {
+  const router = await createRouter({
+    config: new ConfigReader({
+      'agentic-chat': {
+        agentRef: 'airesource:default/support',
+        servicePort: port,
+      },
+    }),
+    logger: mockServices.logger.mock(),
+    httpAuth: mockServices.httpAuth({
+      defaultCredentials: options.anonymous
+        ? mockCredentials.none()
+        : mockCredentials.user('user:default/alice'),
+    }),
+    userInfo: mockServices.userInfo(),
+    permissions: mockServices.permissions.mock({
+      authorize: async items =>
+        items.map(({ permission }) => ({
+          result:
+            permission.name === 'agentic-chat.chat' && options.allowed !== false
+              ? AuthorizeResult.ALLOW
+              : AuthorizeResult.DENY,
+        })),
+    }),
+    catalog: {
+      getEntityByRef: async (
+        _ref: unknown,
+        { credentials }: Parameters<CatalogService['getEntityByRef']>[1],
+      ) => {
+        const identity = await mockServices.userInfo().getUserInfo(credentials);
+        if (
+          options.catalogDenied ||
+          identity.userEntityRef !== 'user:default/alice'
+        )
+          throw new NotAllowedError('Forbidden');
+        return options.missingAgent ? undefined : agent;
+      },
+    } as unknown as CatalogService,
+  });
+  return express().use(router);
+}
+
+it('submits one mapped workflow with trusted identity and preserves upstream acceptance', async () => {
+  const response = await request(await app())
+    .post('/v1/agent/run')
+    .send({ query: 'Hello', conversation_id: 'session-1' });
+  expect(response.status).toBe(202);
+  expect(response.body).toEqual({ workflow_id: 'wf-1', status: 'running' });
+  expect(calls).toEqual([
+    {
+      path: '/v1/agent/run',
+      owner: 'user:default/alice',
+      method: 'POST',
+      authorization: undefined,
+      body: {
+        definition: {
+          apiVersion: 'v1',
+          kind: 'AgentWorkflow',
+          metadata: { name: 'support' },
+          spec: {
+            steps: [
+              {
+                agent: 'support',
+                name: 'agent',
+                type: 'agent',
+                prompt: 'Hello',
+                output_key: 'result',
+                spawn: 'none',
+                tools: ['search'],
+                inference_provider: { name: 'granite', model: 'granite' },
+              },
+            ],
+          },
+        },
+        provider: { name: 'granite', model: 'granite' },
+        session_id: 'session-1',
+      },
+    },
+  ]);
+});
+
+it.each([
+  ['get', '/v2/conversations'],
+  ['get', '/v2/conversations/alice-session'],
+  ['delete', '/v2/conversations/alice-session'],
+  ['post', '/v1/agent/run'],
+])('requires agentic-chat.chat on %s %s', async (method, path) => {
+  const client = request(await app({ allowed: false }));
+  let response;
+  if (method === 'post') {
+    response = await client.post(path).send({ query: 'Hello' });
+  } else if (method === 'delete') {
+    response = await client.delete(path);
+  } else {
+    response = await client.get(path);
+  }
+  expect(response.status).toBe(403);
+  expect(calls).toHaveLength(0);
+});
+
+it('rejects anonymous callers before runtime dispatch', async () => {
+  expect(
+    (await request(await app({ anonymous: true })).get('/v2/conversations'))
+      .status,
+  ).toBe(401);
+  expect(calls).toHaveLength(0);
+});
+
+it('forwards history with trusted owner instead of browser user_id or Authorization', async () => {
+  const response = await request(await app())
+    .get('/v2/conversations?user_id=user:default/bob')
+    .set('Authorization', mockCredentials.user.header('user:default/alice'));
+  expect(response.status).toBe(200);
+  expect(response.body).toEqual({
+    conversations: [{ conversation_id: 'alice-session' }],
+  });
+  expect(calls[0]).toMatchObject({
+    owner: 'user:default/alice',
+    authorization: undefined,
+  });
+});
+
+it('preserves a successful no-content delete response', async () => {
+  const response = await request(await app()).delete(
+    '/v2/conversations/alice-session',
+  );
+  expect(response.status).toBe(204);
+  expect(response.text).toBe('');
+  expect(calls[0]).toMatchObject({
+    method: 'DELETE',
+    path: '/v2/conversations/alice-session',
+    owner: 'user:default/alice',
+  });
+});
+
+it('rejects execution overrides and selection of another agent', async () => {
+  const client = request(await app());
+  expect(
+    (
+      await client
+        .post('/v1/agent/run')
+        .send({ query: 'Hello', user_id: 'bob' })
+    ).status,
+  ).toBe(400);
+  expect(
+    (
+      await client
+        .post('/v1/agent/run')
+        .send({ query: 'Hello', agent_ref: 'airesource:default/other' })
+    ).status,
+  ).toBe(403);
+  expect(calls).toHaveLength(0);
+});
+
+it('honors Catalog denial and missing entities before submission', async () => {
+  expect(
+    (
+      await request(await app({ catalogDenied: true }))
+        .post('/v1/agent/run')
+        .send({ query: 'Hello' })
+    ).status,
+  ).toBe(403);
+  expect(
+    (
+      await request(await app({ missingAgent: true }))
+        .post('/v1/agent/run')
+        .send({ query: 'Hello' })
+    ).status,
+  ).toBe(404);
+  expect(calls).toHaveLength(0);
+});
+
+it('returns a safe dependency failure without upstream details', async () => {
+  upstreamFails = true;
+  const response = await request(await app()).get('/v2/conversations');
+  expect(response.status).toBe(502);
+  expect(response.text).not.toContain('PRIVATE_UPSTREAM_CREDENTIAL');
+});
+
+it('captures the supplied Legal agent request at the new upstream agent endpoint', async () => {
+  const { server: backendServer } = await startTestBackend({
+    features: [
+      agenticChatPlugin,
+      mockServices.rootConfig.factory({
+        data: {
+          'agentic-chat': {
+            agentRef: 'airesource:default/ogx-agent-legal',
+            servicePort: port,
+          },
+        },
+      }),
+      mockServices.permissions.factory({ result: AuthorizeResult.ALLOW }),
+      createServiceFactory({
+        service: catalogServiceRef,
+        deps: {},
+        factory: async () =>
+          ({
+            getEntityByRef: async () => legalAgent,
+          }) as unknown as CatalogService,
+      }),
+    ],
+  });
+  const response = await request(backendServer)
+    .post('/api/agentic-chat/v1/agent/run')
+    .set('Authorization', mockCredentials.user.header('user:default/alice'))
+    .send({ query: "What is FantaCo's policy for software licenses?" });
+  expect(response.status).toBe(202);
+  expect(calls).toEqual([
+    {
+      path: '/v1/agent/run',
+      owner: 'user:default/alice',
+      method: 'POST',
+      authorization: undefined,
+      body: legalUpstreamRequest,
+    },
+  ]);
+});

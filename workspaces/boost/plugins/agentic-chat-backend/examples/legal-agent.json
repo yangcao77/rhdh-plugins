@@ -1,0 +1,18 @@
+{
+  "apiVersion": "backstage.io/v1alpha1",
+  "kind": "AiResource",
+  "metadata": {
+    "name": "ogx-agent-legal",
+    "title": "Legal",
+    "description": "Handles questions about software licenses, embargoes, privacy/PII, contracts, policies, procedures, or compliance"
+  },
+  "spec": {
+    "type": "agent",
+    "lifecycle": "production",
+    "owner": "user:default/admin",
+    "handoffDescription": "Handles questions about software licenses, embargoes, privacy/PII, contracts, policies, procedures, or compliance",
+    "instructions": "You are FantaCo's Legal department specialist. Based on the relevant\ndocuments in the knowledge base, help with the user's legal query.\nProvide a helpful response based on the documents found. If no\nrelevant documents are found, provide general guidance.\n",
+    "enableRAG": true,
+    "model": "vertex/gemini"
+  }
+}

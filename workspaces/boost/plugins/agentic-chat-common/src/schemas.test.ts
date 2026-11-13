@@ -16,22 +16,84 @@
 
 import { runAgentRequestSchema } from './schemas';
 
-it('rejects caller-supplied identity and execution overrides', () => {
+const selection = {
+  agentRef: 'airesource:default/support',
+  provider: 'openai',
+  model: 'selected-model',
+};
+
+it('accepts frontend provider and model alongside the query', () => {
+  const input = { query: 'Hello', ...selection };
+  expect(runAgentRequestSchema.parse(input)).toEqual(input);
+});
+
+it.each([
+  {},
+  { provider: 'openai' },
+  { model: 'selected-model' },
+  { provider: '', model: 'selected-model' },
+  { provider: '  ', model: 'selected-model' },
+  { provider: 'openai', model: '' },
+  { provider: 'openai', model: '  ' },
+  { provider: { name: 'openai' }, model: 'selected-model' },
+  { provider: 'openai', model: 42 },
+])('rejects missing or invalid model selection %j', fields => {
+  expect(
+    runAgentRequestSchema.safeParse({
+      query: 'Hello',
+      agentRef: selection.agentRef,
+      ...fields,
+    }).success,
+  ).toBe(false);
+});
+
+it('rejects caller-supplied identity, credentials and capability overrides', () => {
   for (const field of [
     'user_id',
     'snapshot',
     'definition',
-    'provider',
     'executionMode',
+    'instructions',
+    'tools',
+    'credentials_secret',
   ]) {
     expect(
-      runAgentRequestSchema.safeParse({ query: 'Hello', [field]: 'override' })
-        .success,
+      runAgentRequestSchema.safeParse({
+        query: 'Hello',
+        ...selection,
+        [field]: 'override',
+      }).success,
     ).toBe(false);
   }
 });
 
 it('rejects empty and whitespace-only queries', () => {
-  expect(runAgentRequestSchema.safeParse({ query: '' }).success).toBe(false);
-  expect(runAgentRequestSchema.safeParse({ query: '  ' }).success).toBe(false);
+  for (const query of ['', '  ']) {
+    expect(
+      runAgentRequestSchema.safeParse({ query, ...selection }).success,
+    ).toBe(false);
+  }
+});
+
+it.each([undefined, null, '', '  ', 42, {}])(
+  'rejects missing or invalid agentRef %j',
+  agentRef => {
+    expect(
+      runAgentRequestSchema.safeParse({
+        query: 'Hello',
+        ...selection,
+        agentRef,
+      }).success,
+    ).toBe(false);
+  },
+);
+
+it('rejects the obsolete snake_case agent_ref selector', () => {
+  expect(
+    runAgentRequestSchema.safeParse({
+      query: 'Hello',
+      ...selection,
+      agent_ref: selection.agentRef,
+    }).success,
+  ).toBe(false);
 });

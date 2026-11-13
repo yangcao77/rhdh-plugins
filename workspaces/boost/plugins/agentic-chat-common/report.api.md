@@ -62,19 +62,25 @@ export type RunAgentRequest = z.infer<typeof runAgentRequestSchema>;
 export const runAgentRequestSchema: z.ZodObject<
   {
     query: z.ZodEffects<z.ZodString, string, string>;
-    agent_ref: z.ZodOptional<z.ZodString>;
+    provider: z.ZodEffects<z.ZodString, string, string>;
+    model: z.ZodEffects<z.ZodString, string, string>;
+    agentRef: z.ZodEffects<z.ZodString, string, string>;
     conversation_id: z.ZodOptional<z.ZodString>;
   },
   'strict',
   z.ZodTypeAny,
   {
     query: string;
-    agent_ref?: string | undefined;
+    provider: string;
+    model: string;
+    agentRef: string;
     conversation_id?: string | undefined;
   },
   {
     query: string;
-    agent_ref?: string | undefined;
+    provider: string;
+    model: string;
+    agentRef: string;
     conversation_id?: string | undefined;
   }
 >;

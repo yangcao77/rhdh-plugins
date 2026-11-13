@@ -15,15 +15,15 @@
           "output_key": "result",
           "instructions": "You are FantaCo's Legal department specialist. Based on the relevant\ndocuments in the knowledge base, help with the user's legal query.\nProvide a helpful response based on the documents found. If no\nrelevant documents are found, provide general guidance.\n",
           "inference_provider": {
-            "name": "vertex/gemini",
-            "model": "vertex/gemini"
+            "name": "openai",
+            "model": "gpt-4o"
           }
         }
       ]
     }
   },
   "provider": {
-    "name": "vertex/gemini",
-    "model": "vertex/gemini"
+    "name": "openai",
+    "model": "gpt-4o"
   }
 }

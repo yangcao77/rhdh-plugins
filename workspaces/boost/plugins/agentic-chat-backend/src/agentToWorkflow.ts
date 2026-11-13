@@ -19,6 +19,7 @@ import { InputError } from '@backstage/errors';
 import type {
   AgentWorkflow,
   AgentWorkflowStep,
+  RunAgentRequest,
 } from '@red-hat-developer-hub/backstage-plugin-agentic-chat-common';
 import { z } from 'zod';
 
@@ -29,7 +30,6 @@ const agentSpecSchema = z.object({
     .pipe(z.literal('agent')),
   executionMode: z.enum(['in-process', 'subprocess', 'sandbox']).optional(),
   instructions: z.string().optional(),
-  model: z.string().min(1).optional(),
   tools: z.array(z.string().min(1)).optional(),
   outputSchema: z.record(z.string(), z.unknown()).optional(),
   handoffs: z.array(z.string()).optional(),
@@ -41,7 +41,10 @@ const spawnModes = {
   sandbox: 'ephemeral',
 } as const;
 
-export function agentToWorkflow(entity: Entity, query: string): AgentWorkflow {
+export function agentToWorkflow(
+  entity: Entity,
+  input: RunAgentRequest,
+): AgentWorkflow {
   if (entity.kind.toLocaleLowerCase('en-US') !== 'airesource') {
     throw new InputError('Expected an AiResource agent');
   }
@@ -54,15 +57,13 @@ export function agentToWorkflow(entity: Entity, query: string): AgentWorkflow {
     agent: entity.metadata.name,
     name: 'agent',
     type: 'agent',
-    prompt: query,
+    prompt: input.query,
     output_key: 'result',
     ...(spec.executionMode !== undefined && {
       spawn: spawnModes[spec.executionMode],
     }),
     ...(spec.instructions !== undefined && { instructions: spec.instructions }),
-    ...(spec.model !== undefined && {
-      inference_provider: { name: spec.model, model: spec.model },
-    }),
+    inference_provider: { name: input.provider, model: input.model },
     ...(spec.tools !== undefined && { tools: spec.tools }),
     ...(spec.outputSchema !== undefined && {
       output_schema: spec.outputSchema,

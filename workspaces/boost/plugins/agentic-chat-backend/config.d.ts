@@ -15,9 +15,7 @@
  */
 
 export interface Config {
-  'agentic-chat': {
-    /** The single Catalog agent available to chat. @visibility backend */
-    agentRef: string;
+  'agentic-chat'?: {
     /** Local LCore sidecar port. Defaults to 8080. @visibility backend */
     servicePort?: number;
   };

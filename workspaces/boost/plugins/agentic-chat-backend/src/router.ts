@@ -47,7 +47,6 @@ interface RouterOptions {
 }
 
 const configSchema = z.object({
-  agentRef: z.string().min(1),
   servicePort: z.number().int().min(1).max(65535),
 });
 const conversationIdSchema = z
@@ -70,10 +69,8 @@ function canonicalAgentRef(value: string): string {
 export async function createRouter(options: RouterOptions) {
   const { config, logger, httpAuth, userInfo, permissions, catalog } = options;
   const settings = configSchema.parse({
-    agentRef: config.getString('agentic-chat.agentRef'),
     servicePort: config.getOptionalNumber('agentic-chat.servicePort') ?? 8080,
   });
-  const agentRef = canonicalAgentRef(settings.agentRef);
   const baseUrl = `http://127.0.0.1:${settings.servicePort}`;
   const router = Router();
   router.use(
@@ -140,23 +137,16 @@ export async function createRouter(options: RouterOptions) {
     const parsed = runAgentRequestSchema.safeParse(req.body);
     if (!parsed.success) throw new InputError('Invalid run request');
     const input = parsed.data;
-    if (
-      input.agent_ref !== undefined &&
-      canonicalAgentRef(input.agent_ref) !== agentRef
-    ) {
-      throw new NotAllowedError('Agent is not configured for chat');
-    }
+    const agentRef = canonicalAgentRef(input.agentRef);
     // The Catalog service evaluates entity access on behalf of the caller.
     const entity = await catalog.getEntityByRef(agentRef, {
       credentials: res.locals.credentials,
     });
     if (!entity) throw new NotFoundError('Agent not found');
-    const definition = agentToWorkflow(entity, input.query);
+    const definition = agentToWorkflow(entity, input);
     await forward('/v1/agent/run', 'POST', res, {
       definition,
-      ...(definition.spec.steps[0].inference_provider !== undefined && {
-        provider: definition.spec.steps[0].inference_provider,
-      }),
+      provider: { name: input.provider, model: input.model },
       ...(input.conversation_id !== undefined && {
         session_id: input.conversation_id,
       }),

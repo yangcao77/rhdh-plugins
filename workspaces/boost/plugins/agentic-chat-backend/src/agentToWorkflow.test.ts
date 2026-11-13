@@ -17,6 +17,13 @@
 import type { Entity } from '@backstage/catalog-model';
 import { agentToWorkflow } from './agentToWorkflow';
 
+const input = (query: string) => ({
+  query,
+  agentRef: 'airesource:default/support-agent',
+  provider: 'openai',
+  model: 'selected-model',
+});
+
 const agent: Entity = {
   apiVersion: 'backstage.io/v1alpha1',
   kind: 'AiResource',
@@ -36,7 +43,7 @@ const agent: Entity = {
 };
 
 it('maps the Catalog fields and query into exactly one workflow agent step', () => {
-  expect(agentToWorkflow(agent, 'What failed?')).toEqual({
+  expect(agentToWorkflow(agent, input('What failed?'))).toEqual({
     apiVersion: 'v1',
     kind: 'AgentWorkflow',
     metadata: { name: 'support-agent' },
@@ -50,7 +57,7 @@ it('maps the Catalog fields and query into exactly one workflow agent step', () 
           output_key: 'result',
           instructions: 'Help the user',
           tools: ['search'],
-          inference_provider: { name: 'granite', model: 'granite' },
+          inference_provider: { name: 'openai', model: 'selected-model' },
           output_schema: {
             type: 'object',
             properties: { answer: { type: 'string' } },
@@ -69,7 +76,7 @@ it.each([
   expect(
     agentToWorkflow(
       { ...agent, spec: { ...agent.spec, executionMode: mode } },
-      'Hello',
+      input('Hello'),
     ).spec.steps[0].spawn,
   ).toBe(spawn);
 });
@@ -79,13 +86,14 @@ it('leaves omitted execution mode and optional capabilities absent', () => {
     ...agent,
     spec: { type: 'agent', lifecycle: 'production', owner: 'team' },
   };
-  const step = agentToWorkflow(minimal, 'Hello').spec.steps[0];
+  const step = agentToWorkflow(minimal, input('Hello')).spec.steps[0];
   expect(JSON.parse(JSON.stringify(step))).toEqual({
     agent: 'support-agent',
     name: 'agent',
     type: 'agent',
     prompt: 'Hello',
     output_key: 'result',
+    inference_provider: { name: 'openai', model: 'selected-model' },
   });
 });
 
@@ -93,7 +101,7 @@ it.each(['invalid', false, null])('rejects invalid execution mode %s', mode => {
   expect(() =>
     agentToWorkflow(
       { ...agent, spec: { ...agent.spec, executionMode: mode } },
-      'Hello',
+      input('Hello'),
     ),
   ).toThrow('Invalid agent configuration');
 });
@@ -102,19 +110,32 @@ it('rejects handoffs instead of silently dropping another agent', () => {
   expect(() =>
     agentToWorkflow(
       { ...agent, spec: { ...agent.spec, handoffs: ['other-agent'] } },
-      'Hello',
+      input('Hello'),
     ),
   ).toThrow('Handoffs are not supported');
 });
 
 it('rejects non-agent entities and unsupported string output schemas', () => {
   expect(() =>
-    agentToWorkflow({ ...agent, kind: 'Component' }, 'Hello'),
+    agentToWorkflow({ ...agent, kind: 'Component' }, input('Hello')),
   ).toThrow('Expected an AiResource agent');
   expect(() =>
     agentToWorkflow(
       { ...agent, spec: { ...agent.spec, outputSchema: 'CustomType' } },
-      'Hello',
+      input('Hello'),
     ),
   ).toThrow('Invalid agent configuration');
+});
+
+it('uses frontend selection without interpreting the Catalog model', () => {
+  const entity = {
+    ...agent,
+    spec: {
+      ...agent.spec,
+      model: { provider: 'catalog', name: 'catalog-model' },
+    },
+  };
+  expect(
+    agentToWorkflow(entity, input('Hello')).spec.steps[0].inference_provider,
+  ).toEqual({ name: 'openai', model: 'selected-model' });
 });

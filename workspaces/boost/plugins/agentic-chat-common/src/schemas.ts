@@ -24,7 +24,18 @@ export const runAgentRequestSchema = z
       .min(1)
       .max(32768)
       .refine(value => value.trim().length > 0),
-    agent_ref: z.string().min(1).optional(),
+    provider: z
+      .string()
+      .min(1)
+      .refine(value => value.trim().length > 0),
+    model: z
+      .string()
+      .min(1)
+      .refine(value => value.trim().length > 0),
+    agentRef: z
+      .string()
+      .min(1)
+      .refine(value => value.trim().length > 0),
     conversation_id: z
       .string()
       .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/)
